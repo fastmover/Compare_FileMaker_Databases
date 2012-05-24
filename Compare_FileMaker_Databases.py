@@ -1,7 +1,3 @@
-#001 
-# - added support for Mongo record fields in filemaker
-# - 
-# - 
 from fmkr import FM
 from pymongo import Connection, DESCENDING, ASCENDING
 import pprint
@@ -131,5 +127,5 @@ class FMDB_Compare():
             return False    
 
 if __name__ == '__main__':
-    a = FMDB_Compare("username", "password", "197.0.0.1", 80, "http")
+    a = FMDB_Compare("username", "password", "127.0.0.1", 80, "http")
     a.SearchAndCompareAll("Database1", "LayoutOnDatabase1", "Database2", "LayoutOnDatabase2")
