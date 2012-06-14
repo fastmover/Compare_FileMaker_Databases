@@ -1,3 +1,7 @@
+#001 
+# - added support for Mongo record fields in filemaker
+# - 
+# - 
 from fmkr import FM
 from pymongo import Connection, DESCENDING, ASCENDING
 import pprint
@@ -25,7 +29,6 @@ class FMDB_Compare():
             newstring2 = self.to_unicode( newstring )
             if newstring2 == None or newstring2 == "":
                 return None
-            print newstring2
             return newstring2
         elif( self.isint( bad_string ) ):
             bad_string = str(bad_string)
@@ -33,12 +36,12 @@ class FMDB_Compare():
         else:
             print "bad_string is type: "
             print type(bad_string)
-    def SearchAndCompareAll(self, db1name, db1layout, db2name, db2layout, maxrecords=500):
+    def SearchAndCompareAll(self, db1name, db1layout, db2name, db2layout, ignoreList=[], maxrecords=500):
         print "searching db1:"
         db1 = self.FindAllRecords(db1name, db1layout, maxrecords)
         print "searching db2:"
         db2 = self.FindAllRecords(db2name, db2layout, maxrecords)
-        self.CompareDatabases(db2, db1)
+        self.CompareDatabases(db2, db1, ignoreList)
     #If Record Id's don't match, echo & exit!
     def CompareRecordIDs(self, rid1, rid2, autoexit=True):
         if rid1 != rid2:
@@ -53,21 +56,46 @@ class FMDB_Compare():
             print ""
             if(autoexit):
                 exit
-    def CompareDatabases(self, db1, db2, limit=500):
+    def CompareDatabases(self, db1, db2, ignoreList=[], limit=500):
+        """
+        Compares 2 databases that are loaded into memory.
+            Inputs:
+                Database1
+                Database2
+                List of fields to ignore
+                Maximum number of records to parse
+            Returns:
+                Nothing.
+        """
         print "Comparing Databases:"
+        print "Ignoring fields: "
+        print ignoreList
         count = 0
         for row in db1:
             if count > limit:
                 break
-            print "     ==================================    "
-            print "Row:   "
-            print "     ==================================    "
+            rowbuffer = ""
+            isDiff = False
             for key, value in row.iteritems():
                 if self.to_unicode(key) == "RECORDID":
-                    self.CompareRecordIDs(self.to_unicode(value), self.to_unicode(db2[count]["RECORDID"]))
+                    rowRecordID = self.to_unicode(value)
+                    self.CompareRecordIDs(rowRecordID, self.to_unicode(db2[count]["RECORDID"]))
                 newvalue = self.to_unicode(value)
                 newvalue2 = self.to_unicode(db2[count][key])
-                self.isDif(newvalue, newvalue2, key)
+                if(self.to_unicode( key ) not in ignoreList):
+                    rowbuffer2 = self.isDif(newvalue, newvalue2, key)
+                    if(rowbuffer2):
+                        if(isDiff == False):
+                            isDiff = True
+                        rowbuffer += rowbuffer2 + "\n"
+            if(isDiff):
+                print "         "
+                print "     ==================================    "
+                print "RecordID: " + rowRecordID
+                print "     ==================================    "
+                print rowbuffer
+                print "     ==================================    "
+                print "         "
             count = count + 1
         print count
     def FindAllRecords(self, database, layout, maxrecords=100):
@@ -83,18 +111,14 @@ class FMDB_Compare():
                 if(fielda == fieldb):
                     return False
                 else:
-                    print "Value Difference - " + key + ": " + fielda + " <> " + fieldb
-                    return True
-                
+                    return "Value Difference - " + key + ": " + fielda + " <> " + fieldb
             else: 
-                print "Value Difference - " + key + ": " + fielda + " <> None"
-                return True
+                return "Value Difference - " + key + ": " + fielda + " <> None"
         else:
             if(fielda is None and fieldb is None):
                 return False
             else:
-                print "Value Difference - " + key + ": None <> " + fieldb
-                return True
+                return "Value Difference - " + key + ": None <> " + fieldb
     def to_fm_datetime(self, dt):
         if dt != None:
             return datetime.strftime(dt, '%m/%d/%Y %H:%M:%S')
